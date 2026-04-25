@@ -2,7 +2,7 @@
   "name": "生活扶助費計算シミュレーター",
   "short_name": "生活扶助費",
   "description": "生活保護の生活扶助費を自動計算するシミュレーターです",
-  "start_url": "/",
+  "start_url": "/seikatsufujo-pwa/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f4f6f9",
