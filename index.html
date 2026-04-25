@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生活扶助費 自動計算シミュレーター</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="生活扶助費">
+<meta name="theme-color" content="#1a5276">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif; background: #f4f6f9; color: #222; min-height: 100vh; }
+  .header { background: #1a5276; color: #fff; padding: 16px 16px; }
+  .header h1 { font-size: 1.15rem; font-weight: bold; line-height: 1.4; }
+  .header p { font-size: 0.75rem; opacity: 0.8; margin-top: 4px; }
+  .container { max-width: 800px; margin: 0 auto; padding: 16px 12px; }
+  .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+  .card h2 { font-size: 0.95rem; font-weight: bold; color: #1a5276; border-left: 4px solid #1a5276; padding-left: 10px; margin-bottom: 14px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 6px; font-weight: bold; }
+  .field select, .field input[type="number"] {
+    width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px;
+    font-size: 16px; background: #fff; appearance: none; -webkit-appearance: none;
+  }
+  .field select:focus, .field input:focus { outline: 2px solid #1a5276; border-color: #1a5276; }
+  .members-list { display: flex; flex-direction: column; gap: 10px; }
+  .member-row { display: flex; flex-direction: column; gap: 8px; padding: 12px; background: #f8f9fb; border-radius: 8px; }
+  .member-row-header { display: flex; justify-content: space-between; align-items: center; }
+  .member-row-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .member-row label { font-size: 0.8rem; color: #666; display: block; margin-bottom: 4px; }
+  .member-row select, .member-row input[type="number"] {
+    width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;
+    font-size: 16px; background: #fff; -webkit-appearance: none;
+  }
+  .member-name { font-size: 0.85rem; font-weight: bold; color: #333; }
+  .btn-remove { background: #e74c3c; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 0.8rem; min-height: 36px; }
+  .btn-add { background: #2980b9; color: #fff; border: none; border-radius: 8px; padding: 12px 18px; cursor: pointer; font-size: 0.95rem; margin-top: 10px; width: 100%; min-height: 44px; }
+  .btn-add:active { background: #1a5276; }
+  .btn-remove:active { background: #c0392b; }
+  .addition-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 480px) { .addition-grid { grid-template-columns: 1fr; } }
+  .addition-item { display: flex; align-items: center; gap: 10px; padding: 12px; background: #f8f9fb; border-radius: 8px; cursor: pointer; min-height: 44px; }
+  .addition-item input[type="checkbox"] { width: 20px; height: 20px; min-width: 20px; cursor: pointer; accent-color: #1a5276; }
+  .label-main { font-size: 0.85rem; font-weight: bold; display: block; line-height: 1.4; }
+  .addition-item span[id^="lbl_"] { color: #2980b9; font-size: 0.8rem; display: block; margin-top: 2px; }
+  .btn-calc { width: 100%; background: #1a5276; color: #fff; border: none; border-radius: 10px; padding: 18px 16px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin-top: 8px; min-height: 56px; }
+  .btn-calc:active { background: #154360; }
+  .result-box { display: none; background: #eaf4fb; border: 2px solid #1a5276; border-radius: 12px; padding: 20px 16px; text-align: center; margin-top: 16px; }
+  .result-box.show { display: block; }
+  .result-total { font-size: 2rem; font-weight: bold; color: #1a5276; word-break: break-all; }
+  .result-total span { font-size: 0.95rem; font-weight: normal; }
+  .result-breakdown { margin-top: 16px; text-align: left; }
+  .result-breakdown h3 { font-size: 0.9rem; color: #555; margin-bottom: 10px; font-weight: bold; }
+  .breakdown-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 0.82rem; padding: 7px 0; border-bottom: 1px solid #d0e8f4; flex-wrap: wrap; }
+  .breakdown-row span:last-child { white-space: nowrap; font-weight: bold; }
+  .breakdown-row:last-child { border-bottom: none; }
+  .notice { font-size: 0.73rem; color: #888; margin-top: 16px; line-height: 1.7; }
+  .grade-hint { font-size: 0.75rem; color: #888; margin-top: 6px; line-height: 1.5; }
+  .error-msg { color: #e74c3c; font-size: 0.85rem; margin-top: 8px; display: none; }
+  @media (min-width: 600px) {
+    .header { padding: 20px 24px; }
+    .header h1 { font-size: 1.3rem; }
+    .container { padding: 24px 16px; }
+    .card { padding: 24px; }
+    .member-row { flex-direction: row; align-items: end; }
+    .member-row-header { display: none; }
+    .member-row-fields { display: contents; }
+    .btn-add { width: auto; }
+    .result-total { font-size: 2.4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>生活扶助費 自動計算シミュレーター</h1>
+  <p>令和5年10月基準 ／ 概算です。実際の支給額は福祉事務所にご確認ください</p>
+</div>
+
+<div class="container">
+
+  <!-- STEP 1: 級地区分 -->
+  <div class="card">
+    <h2>① お住まいの地域（級地区分）</h2>
+    <div class="field">
+      <label>級地区分を選択してください</label>
+      <select id="kyuchi">
+        <option value="1_1">1級地-1（東京23区・横浜市・大阪市など）</option>
+        <option value="1_2">1級地-2（さいたま市・千葉市・名古屋市など）</option>
+        <option value="2_1">2級地-1（川越市・船橋市・京都市など）</option>
+        <option value="2_2">2級地-2（宇都宮市・前橋市・松山市など）</option>
+        <option value="3_1">3級地-1（青森市・秋田市・佐賀市など）</option>
+        <option value="3_2">3級地-2（農村部・過疎地域など）</option>
+      </select>
+      <div class="grade-hint">※ 詳しくは <a href="https://www.mhlw.go.jp/" target="_blank">厚生労働省HP</a> または福祉事務所にご確認ください</div>
+    </div>
+  </div>
+
+  <!-- STEP 2: 世帯構成 -->
+  <div class="card">
+    <h2>② 世帯員の年齢を入力してください</h2>
+    <div class="members-list" id="membersList">
+      <div class="member-row" data-index="0">
+        <div class="member-row-header">
+          <span class="member-name">世帯員1（あなた）</span>
+        </div>
+        <div class="member-row-fields">
+          <div>
+            <label>年齢</label>
+            <input type="number" class="age-input" placeholder="例：35" min="0" max="120" value="">
+          </div>
+          <div>
+            <label>年齢区分</label>
+            <select class="age-group-select" disabled>
+              <option value="">自動選択</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="btn-add" onclick="addMember()">＋ 世帯員を追加</button>
+    <p class="error-msg" id="memberError">世帯員の年齢をすべて入力してください</p>
+  </div>
+
+  <!-- STEP 3: 加算 -->
+  <div class="card">
+    <h2>③ 加算の有無（該当するものにチェック）</h2>
+    <p style="font-size:0.78rem; color:#888; margin-bottom:12px;">※ 金額は①で選んだ級地区分に応じて自動で変わります</p>
+    <div class="addition-grid">
+      <label class="addition-item">
+        <input type="checkbox" id="add_disability1">
+        <div><span class="label-main">障害者加算（1・2級相当）</span><span id="lbl_disability1">＋26,810円/月</span></div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_disability2">
+        <div><span class="label-main">障害者加算（3級相当）</span><span id="lbl_disability2">＋17,870円/月</span></div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_mother1">
+        <div><span class="label-main">母子加算（子ども1人）</span><span id="lbl_mother1">＋18,800円/月</span></div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_mother2">
+        <div><span class="label-main">母子加算（子ども2人）</span><span id="lbl_mother2">＋23,600円/月</span></div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_mother3">
+        <div><span class="label-main">母子加算（子ども3人）</span><span id="lbl_mother3">＋26,500円/月</span></div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_child">
+        <div><span class="label-main">児童養育加算（1人あたり）</span><span id="lbl_child">＋10,190円/月</span></div>
+      </label>
+      <label class="addition-item" style="grid-column: 1 / -1; align-items: start;">
+        <input type="checkbox" id="add_child_multi" style="margin-top:3px;">
+        <div style="flex:1;">
+          <span class="label-main">児童養育加算（複数人）</span>
+          <span id="lbl_child_multi">＋10,190円 × 人数</span>
+          <div style="margin-top:6px; display:none;" id="child_count_wrap">
+            <label style="font-size:0.78rem; color:#666;">対象の子ども人数：</label>
+            <input type="number" id="child_count" min="2" max="10" value="2" style="width:70px; padding:4px 8px; border:1px solid #ccc; border-radius:6px; font-size:0.9rem;">
+          </div>
+        </div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_pregnant1">
+        <div><span class="label-main">妊産婦加算（妊娠6ヶ月未満）</span><span id="lbl_pregnant1">＋9,130円/月</span></div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_pregnant2">
+        <div><span class="label-main">妊産婦加算（妊娠6ヶ月以上）</span><span id="lbl_pregnant2">＋13,790円/月</span></div>
+      </label>
+      <label class="addition-item">
+        <input type="checkbox" id="add_postpartum">
+        <div><span class="label-main">妊産婦加算（産婦）</span><span id="lbl_postpartum">＋8,480円/月</span></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- STEP 4: 収入 -->
+  <div class="card">
+    <h2>④ 世帯の収入（月額）</h2>
+    <div class="field">
+      <label>月々の収入合計（給与・年金・各種手当など）</label>
+      <input type="number" id="income" placeholder="例：80000" min="0" value="">
+    </div>
+    <p style="font-size:0.78rem; color:#888; margin-top:-6px; line-height:1.6;">
+      ※ 入力しない場合は収入0円として計算します。<br>
+      ※ 勤労収入がある場合は「基礎控除後」の金額を入力してください。
+    </p>
+  </div>
+
+  <button class="btn-calc" onclick="calculate()">計算する</button>
+
+  <!-- 結果 -->
+  <div class="result-box" id="resultBox">
+    <div style="font-size:0.9rem; color:#555; margin-bottom:8px;">生活扶助費（月額）概算</div>
+    <div class="result-total" id="resultTotal">¥0 <span>円/月</span></div>
+    <div id="incomeResult"></div>
+    <div class="result-breakdown" id="resultBreakdown"></div>
+    <div class="notice">
+      ※ この計算は令和5年10月改定の基準額を使用した概算です。<br>
+      ※ 実際の支給額は住宅扶助・医療扶助・冬季加算なども加算されます。<br>
+      ※ 正確な金額は最寄りの福祉事務所（市区町村役場）にご相談ください。
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ========== 基準額データ（令和5年10月改定） ==========
+
+// 第1類基準額①（年齢区分 × 級地区分）
+const CLASS1 = {
+  "0-2":   {"1_1":21820,"1_2":20830,"2_1":19850,"2_2":18860,"3_1":17890,"3_2":16910},
+  "3-5":   {"1_1":27490,"1_2":26260,"2_1":25030,"2_2":23780,"3_1":22560,"3_2":21310},
+  "6-11":  {"1_1":35550,"1_2":33950,"2_1":32350,"2_2":30750,"3_1":29160,"3_2":27550},
+  "12-17": {"1_1":43910,"1_2":41940,"2_1":39960,"2_2":37990,"3_1":36010,"3_2":34030},
+  "18-19": {"1_1":43910,"1_2":41940,"2_1":39960,"2_2":37990,"3_1":36010,"3_2":34030},
+  "20-40": {"1_1":42020,"1_2":40140,"2_1":38240,"2_2":36350,"3_1":34460,"3_2":32570},
+  "41-59": {"1_1":39840,"1_2":38050,"2_1":36250,"2_2":34470,"3_1":32680,"3_2":30880},
+  "60-64": {"1_1":37670,"1_2":35980,"2_1":34280,"2_2":32590,"3_1":30890,"3_2":29200},
+  "65-69": {"1_1":37670,"1_2":35980,"2_1":34280,"2_2":32590,"3_1":30890,"3_2":29200},
+  "70-74": {"1_1":33750,"1_2":32470,"2_1":30710,"2_2":29530,"3_1":27680,"3_2":26620},
+  "75+":   {"1_1":33750,"1_2":32470,"2_1":30710,"2_2":29530,"3_1":27680,"3_2":26620},
+};
+
+// 逓減率①（世帯人数に応じて第1類費全体に掛ける）
+const TEIGEN1 = { 1:1.00, 2:1.00, 3:1.00, 4:0.95, 5:0.90, 6:0.85, 7:0.80 };
+
+// 第2類基準額①（世帯人数 × 級地区分）
+const CLASS2 = {
+  1: {"1_1":45320,"1_2":43280,"2_1":41240,"2_2":39210,"3_1":37160,"3_2":35130},
+  2: {"1_1":50160,"1_2":47910,"2_1":45640,"2_2":43390,"3_1":41130,"3_2":38870},
+  3: {"1_1":55610,"1_2":53110,"2_1":50600,"2_2":48110,"3_1":45600,"3_2":43100},
+  4: {"1_1":57560,"1_2":54970,"2_1":52390,"2_2":49780,"3_1":47200,"3_2":44610},
+  5: {"1_1":58010,"1_2":55430,"2_1":52800,"2_2":50210,"3_1":47570,"3_2":44990},
+};
+
+// 年齢 → 年齢区分マッピング
+function getAgeGroup(age) {
+  if (age <= 2)  return "0-2";
+  if (age <= 5)  return "3-5";
+  if (age <= 11) return "6-11";
+  if (age <= 17) return "12-17";
+  if (age <= 19) return "18-19";
+  if (age <= 40) return "20-40";
+  if (age <= 59) return "41-59";
+  if (age <= 64) return "60-64";
+  if (age <= 69) return "65-69";
+  if (age <= 74) return "70-74";
+  return "75+";
+}
+
+function getAgeGroupLabel(group) {
+  const labels = {
+    "0-2":"0〜2歳","3-5":"3〜5歳","6-11":"6〜11歳",
+    "12-17":"12〜17歳","18-19":"18〜19歳","20-40":"20〜40歳",
+    "41-59":"41〜59歳","60-64":"60〜64歳","65-69":"65〜69歳",
+    "70-74":"70〜74歳","75+":"75歳以上"
+  };
+  return labels[group] || group;
+}
+
+// ========== 世帯員管理 ==========
+let memberCount = 1;
+
+function addMember() {
+  if (memberCount >= 8) { alert("世帯員は最大8名まで追加できます"); return; }
+  memberCount++;
+  const list = document.getElementById('membersList');
+  const div = document.createElement('div');
+  div.className = 'member-row';
+  div.dataset.index = memberCount - 1;
+  div.innerHTML = `
+    <div class="member-row-header">
+      <span class="member-name">世帯員${memberCount}</span>
+      <button class="btn-remove" onclick="removeMember(this)">削除</button>
+    </div>
+    <div class="member-row-fields">
+      <div>
+        <label>年齢</label>
+        <input type="number" class="age-input" placeholder="例：10" min="0" max="120" value="" oninput="updateAgeGroup(this)">
+      </div>
+      <div>
+        <label>年齢区分</label>
+        <select class="age-group-select" disabled><option value="">自動選択</option></select>
+      </div>
+    </div>
+  `;
+  list.appendChild(div);
+  updateSpecial加算UI();
+}
+
+function removeMember(btn) {
+  const row = btn.closest('.member-row');
+  row.remove();
+  // ラベル更新
+  document.querySelectorAll('.member-row').forEach((r, i) => {
+    r.querySelector('.member-name').textContent = i === 0 ? '世帯員1（あなた）' : `世帯員${i+1}`;
+  });
+  memberCount = document.querySelectorAll('.member-row').length;
+  updateSpecial加算UI();
+}
+
+function updateAgeGroup(input) {
+  const row = input.closest('.member-row');
+  const sel = row.querySelector('.age-group-select');
+  const age = parseInt(input.value);
+  if (!isNaN(age) && age >= 0) {
+    const group = getAgeGroup(age);
+    sel.innerHTML = `<option value="${group}">${getAgeGroupLabel(group)}</option>`;
+  } else {
+    sel.innerHTML = `<option value="">年齢を入力すると自動選択</option>`;
+  }
+}
+
+// 最初の行にもイベントをバインド、加算ラベル初期化
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelector('.age-input').addEventListener('input', function(){ updateAgeGroup(this); });
+  updateKasanLabels();
+});
+
+// ========== 加算データ（令和7年10月基準・級地グループ別） ==========
+// kyuchiGroup: 1=1級地(-1/-2), 2=2級地(-1/-2), 3=3級地(-1/-2)
+const KASAN = {
+  disability1: { 1:26810, 2:24940, 3:23060 }, // 障害者加算 1・2級
+  disability2: { 1:17870, 2:16620, 3:15380 }, // 障害者加算 3級
+  mother1:     { 1:18800, 2:17400, 3:16100 }, // 母子加算 子1人
+  mother2:     { 1:23600, 2:21800, 3:20200 }, // 母子加算 子2人
+  mother3:     { 1:26500, 2:24500, 3:22700 }, // 母子加算 子3人（子2人＋1人分加算）
+  child:       { 1:10190, 2:10190, 3:10190 }, // 児童養育加算（全国一律）
+  pregnant1:   { 1:9130,  2:9130,  3:7760  }, // 妊産婦加算 6ヶ月未満（1・2級地同額）
+  pregnant2:   { 1:13790, 2:13790, 3:11720 }, // 妊産婦加算 6ヶ月以上
+  postpartum:  { 1:8480,  2:8480,  3:7210  }, // 産婦加算
+};
+
+function getKyuchiGroup(kyuchi) {
+  return parseInt(kyuchi[0]); // "1_1"→1, "2_1"→2, "3_2"→3
+}
+
+function updateKasanLabels() {
+  const g = getKyuchiGroup(document.getElementById('kyuchi').value);
+  const fmt = n => `＋${n.toLocaleString()}円/月`;
+  document.getElementById('lbl_disability1').textContent = fmt(KASAN.disability1[g]);
+  document.getElementById('lbl_disability2').textContent = fmt(KASAN.disability2[g]);
+  document.getElementById('lbl_mother1').textContent     = fmt(KASAN.mother1[g]);
+  document.getElementById('lbl_mother2').textContent     = fmt(KASAN.mother2[g]);
+  document.getElementById('lbl_mother3').textContent     = fmt(KASAN.mother3[g]);
+  document.getElementById('lbl_child').textContent       = fmt(KASAN.child[g]);
+  document.getElementById('lbl_child_multi').textContent = `＋${KASAN.child[g].toLocaleString()}円 × 人数`;
+  document.getElementById('lbl_pregnant1').textContent   = fmt(KASAN.pregnant1[g]);
+  document.getElementById('lbl_pregnant2').textContent   = fmt(KASAN.pregnant2[g]);
+  document.getElementById('lbl_postpartum').textContent  = fmt(KASAN.postpartum[g]);
+}
+
+// 複数人チェックで人数入力を表示/非表示
+document.getElementById('add_child_multi').addEventListener('change', function() {
+  document.getElementById('child_count_wrap').style.display = this.checked ? 'block' : 'none';
+});
+
+// 級地変更で加算ラベル更新
+document.getElementById('kyuchi').addEventListener('change', updateKasanLabels);
+
+// ========== 計算 ==========
+function calculate() {
+  const errorEl = document.getElementById('memberError');
+  errorEl.style.display = 'none';
+
+  const rows = document.querySelectorAll('.member-row');
+  const kyuchi = document.getElementById('kyuchi').value;
+  const g = getKyuchiGroup(kyuchi);
+  const ages = [];
+
+  for (const row of rows) {
+    const val = row.querySelector('.age-input').value;
+    const age = parseInt(val);
+    if (isNaN(age) || age < 0) {
+      errorEl.style.display = 'block';
+      row.querySelector('.age-input').focus();
+      return;
+    }
+    ages.push(age);
+  }
+
+  const n = ages.length;
+
+  // 第1類費の合計
+  let class1Sum = 0;
+  const class1Details = [];
+  for (const age of ages) {
+    const group = getAgeGroup(age);
+    const amt = CLASS1[group][kyuchi];
+    class1Sum += amt;
+    class1Details.push({ age, group, amt });
+  }
+
+  // 逓減率①適用
+  const teigen = TEIGEN1[Math.min(n, 7)] || 0.75;
+  const class1After = Math.round(class1Sum * teigen);
+
+  // 第2類費
+  const class2Key = Math.min(n, 5);
+  const class2Amt = CLASS2[class2Key][kyuchi];
+
+  // 特例加算（令和7年10月以降：1人あたり1,500円）
+  const tokurei = n * 1500;
+
+  // 各種加算（級地グループに応じた金額を使用）
+  let additionsTotal = 0;
+  const additionDetails = [];
+
+  const simpleChecks = [
+    ["add_disability1", "障害者加算（1・2級）", KASAN.disability1[g]],
+    ["add_disability2", "障害者加算（3級）",    KASAN.disability2[g]],
+    ["add_mother1",     "母子加算（子1人）",    KASAN.mother1[g]],
+    ["add_mother2",     "母子加算（子2人）",    KASAN.mother2[g]],
+    ["add_mother3",     "母子加算（子3人）",    KASAN.mother3[g]],
+    ["add_child",       "児童養育加算（1人）",  KASAN.child[g]],
+    ["add_pregnant1",   "妊産婦加算（6ヶ月未満）", KASAN.pregnant1[g]],
+    ["add_pregnant2",   "妊産婦加算（6ヶ月以上）", KASAN.pregnant2[g]],
+    ["add_postpartum",  "妊産婦加算（産婦）",   KASAN.postpartum[g]],
+  ];
+  for (const [id, label, amt] of simpleChecks) {
+    if (document.getElementById(id).checked) {
+      additionsTotal += amt;
+      additionDetails.push({ label, amt });
+    }
+  }
+
+  // 児童養育加算（複数人）
+  if (document.getElementById('add_child_multi').checked) {
+    const cnt = Math.max(2, parseInt(document.getElementById('child_count').value) || 2);
+    const amt = KASAN.child[g] * cnt;
+    additionsTotal += amt;
+    additionDetails.push({ label: `児童養育加算（${cnt}人）`, amt });
+  }
+
+  const total = class1After + class2Amt + tokurei + additionsTotal;
+
+  // 収入
+  const incomeVal = parseInt(document.getElementById('income').value) || 0;
+  const net = Math.max(0, total - incomeVal);
+
+  // 結果表示
+  document.getElementById('resultTotal').innerHTML = `${total.toLocaleString()} <span>円/月</span>`;
+
+  // 収入差引結果
+  const incomeResult = document.getElementById('incomeResult');
+  if (incomeVal > 0) {
+    const shortage = total - incomeVal;
+    if (shortage <= 0) {
+      incomeResult.innerHTML = `
+        <div style="margin:16px 0; padding:14px; background:#e8f8f0; border-radius:8px; border:1px solid #27ae60;">
+          <div style="font-size:0.85rem; color:#27ae60; font-weight:bold; margin-bottom:4px;">収入差し引き後</div>
+          <div style="font-size:1.1rem; color:#27ae60; font-weight:bold;">収入が生活扶助費を上回っています（差引後：0円）</div>
+          <div style="font-size:0.78rem; color:#555; margin-top:4px;">収入 ${incomeVal.toLocaleString()}円 ≥ 生活扶助費 ${total.toLocaleString()}円</div>
+        </div>`;
+    } else {
+      incomeResult.innerHTML = `
+        <div style="margin:16px 0; padding:14px; background:#fef9e7; border-radius:8px; border:1px solid #f39c12;">
+          <div style="font-size:0.85rem; color:#e67e22; font-weight:bold; margin-bottom:4px;">収入差し引き後の不足額（概算）</div>
+          <div style="font-size:1.8rem; font-weight:bold; color:#e67e22;">${net.toLocaleString()} <span style="font-size:1rem; font-weight:normal;">円/月</span></div>
+          <div style="font-size:0.78rem; color:#555; margin-top:4px;">生活扶助費 ${total.toLocaleString()}円 － 収入 ${incomeVal.toLocaleString()}円</div>
+        </div>`;
+    }
+  } else {
+    incomeResult.innerHTML = '';
+  }
+
+  const bd = document.getElementById('resultBreakdown');
+  let html = '<h3>内訳</h3>';
+  html += `<div class="breakdown-row"><span>第1類費（食費・被服費）合計</span><span>${class1Sum.toLocaleString()}円</span></div>`;
+  html += `<div class="breakdown-row"><span>　うち逓減率（${teigen}）適用後</span><span>${class1After.toLocaleString()}円</span></div>`;
+  html += `<div class="breakdown-row"><span>第2類費（光熱水費）</span><span>${class2Amt.toLocaleString()}円</span></div>`;
+  html += `<div class="breakdown-row"><span>特例加算（${n}人 × 1,500円）</span><span>${tokurei.toLocaleString()}円</span></div>`;
+  for (const { label, amt } of additionDetails) {
+    html += `<div class="breakdown-row"><span>${label}</span><span>${amt.toLocaleString()}円</span></div>`;
+  }
+  html += `<div class="breakdown-row" style="border-top:2px solid #1a5276; margin-top:6px; padding-top:8px;"><span>生活扶助費 合計（月額概算）</span><span>${total.toLocaleString()}円</span></div>`;
+  if (incomeVal > 0) {
+    html += `<div class="breakdown-row"><span>　－ 収入</span><span style="color:#e74c3c;">－${incomeVal.toLocaleString()}円</span></div>`;
+    html += `<div class="breakdown-row" style="border-top:2px solid #e67e22; margin-top:6px; padding-top:8px; font-weight:bold;"><span>差引後の不足額</span><span style="color:#e67e22;">${net.toLocaleString()}円</span></div>`;
+  }
+  bd.innerHTML = html;
+
+  const box = document.getElementById('resultBox');
+  box.classList.add('show');
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
