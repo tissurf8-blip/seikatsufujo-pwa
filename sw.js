@@ -1,4 +1,4 @@
-const CACHE = 'seikatsufujo-v1';
+const CACHE = 'seikatsufujo-v3';
 const FILES = [
   'index.html',
   'manifest.json',
