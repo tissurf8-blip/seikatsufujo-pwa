@@ -155,7 +155,8 @@ Neon Uplink は（Still Frequency と違い）自分のものなので被りの�
 
 ### C. 音源ファイル
 mp3 / wav をアップロード。**解析環境は構築済み**（ffmpeg 7.0.2 + librosa 0.11.0 + pyloudnorm）。
-`tools/analyze_audio.py` で以下を一括算出：
+`tools/analyze_audio.py` で以下を一括算出（合成音源で動作確認済み。
+ラウドネス測定値は ffmpeg の EBU R128 メーターと 0.1dB 以内で一致することを検証した）：
 
 - ラウドネス（LUFS）とカタログ全体のばらつき ← **連続再生するBGMでは音量差が離脱要因になる**
 - 配信基準 −14 LUFS からの乖離（プラットフォーム正規化後に痩せていないか）
